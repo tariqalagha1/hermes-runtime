@@ -1,0 +1,328 @@
+# HEQB-0001 — Hermes Execution Qualification Benchmark
+# Permanent qualification standard for every Hermes Runtime release.
+# Version: 1.0.0
+# Governed by: HEX-0001
+
+benchmark:
+  name: "Hermes Execution Qualification Benchmark"
+  id: "HEQB-0001"
+  version: "1.0.0"
+  purpose: >
+    Permanent, repeatable, evidence-based benchmark for qualifying
+    every Hermes Runtime release. Measures execution capability,
+    not LLM performance or hardware.
+
+# ═══════════════════════════════════════════════════
+# BENCHMARK PHILOSOPHY
+# ═══════════════════════════════════════════════════
+
+philosophy:
+  principles:
+    - "Measure capabilities, not implementations"
+    - "Same runtime version → same score (deterministic)"
+    - "Backward-comparable across versions"
+    - "Coverage over volume — test every component, not every permutation"
+    - "Evidence-driven — every score backed by observation"
+  invariants:
+    - "HEQB never measures LLM quality"
+    - "HEQB never measures hardware speed"
+    - "HEQB only measures runtime correctness + efficiency"
+
+# ═══════════════════════════════════════════════════
+# BENCHMARK LEVELS
+# ═══════════════════════════════════════════════════
+
+levels:
+  - id: "L1"
+    name: "Compilation Qualification"
+    description: "Can the runtime compile missions correctly?"
+    capabilities_tested:
+      - "Mission parsing"
+      - "Constraint extraction"
+      - "Capability identification"
+      - "Dependency graph construction"
+      - "Atomic task decomposition"
+      - "Parallelism analysis"
+      - "Critical path computation"
+      - "IR validation"
+    missions:
+      - "HEQB-L1-M1: Sequential pipeline (5 tasks, linear deps)"
+      - "HEQB-L1-M2: Parallel fan-out (6 tasks, 5→1 dependency)"
+      - "HEQB-L1-M3: Complex DAG (8 tasks, multiple dependency chains)"
+    pass_threshold: "3/3 missions compile correctly with valid IR"
+
+  - id: "L2"
+    name: "Scheduling Qualification"
+    description: "Can the runtime schedule compiled missions correctly?"
+    capabilities_tested:
+      - "Dependency resolution"
+      - "Ready/blocked queue generation"
+      - "Parallel batch construction"
+      - "Wave planning"
+      - "Critical path preservation"
+      - "Deadlock detection"
+      - "Resource estimation"
+    missions:
+      - "HEQB-L2-M1: Schedule L1 missions — verify queues + batches"
+      - "HEQB-L2-M2: Deadlock detection — mission with dependency cycle"
+      - "HEQB-L2-M3: Resource estimation — 20-task fan-out"
+    pass_threshold: "All schedules valid. Deadlock detection functional. Estimates within ±50%."
+
+  - id: "L3"
+    name: "Dispatch Qualification"
+    description: "Can the runtime manage task state correctly?"
+    capabilities_tested:
+      - "Task lifecycle (QUEUED → READY → DISPATCHED → RUNNING → COMPLETED)"
+      - "Dependency release on completion"
+      - "Blocked work isolation"
+      - "Pause + resume"
+      - "Failure + retry"
+      - "Mission completion detection"
+      - "State transition validity"
+    missions:
+      - "HEQB-L3-M1: Full lifecycle — 3 tasks, all states traversed"
+      - "HEQB-L3-M2: Pause/resume — pause mid-execution, resume, complete"
+      - "HEQB-L3-M3: Failure recovery — fail task, retry, succeed"
+      - "HEQB-L3-M4: Blocked isolation — blocked task doesn't block ready tasks"
+    pass_threshold: "All state transitions valid. No illegal transitions. 0 deadlocks."
+
+  - id: "L4"
+    name: "Agent Execution Qualification"
+    description: "Can agents execute dispatched tasks and produce evidence?"
+    capabilities_tested:
+      - "Agent creation per task"
+      - "Tool execution (shell, file, http, git, python, browser)"
+      - "Evidence generation (SHA-256 hash)"
+      - "Event publishing"
+      - "Concurrent agent execution"
+      - "Agent cleanup"
+    missions:
+      - "HEQB-L4-M1: Shell agent — execute command, capture output"
+      - "HEQB-L4-M2: File agent — write, read, verify"
+      - "HEQB-L4-M3: HTTP agent — fetch page, verify status"
+      - "HEQB-L4-M4: Python agent — execute code, verify result"
+      - "HEQB-L4-M5: Concurrent agents — 10 parallel agents"
+      - "HEQB-L4-M6: Evidence agent — verify hash correctness"
+    pass_threshold: "≥80% agent success rate. All evidence hashes valid. All events published."
+
+  - id: "L5"
+    name: "Recovery Qualification"
+    description: "Can the runtime recover from failures without data loss?"
+    capabilities_tested:
+      - "Task failure detection"
+      - "Blocker classification"
+      - "Unaffected work continuation"
+      - "Retry with evidence preservation"
+      - "Recovery event publishing"
+    missions:
+      - "HEQB-L5-M1: Mid-mission failure — 1 of 3 agents fails"
+      - "HEQB-L5-M2: Cascade prevention — failure doesn't stop parallel agents"
+      - "HEQB-L5-M3: Retry success — failed agent recovers on 2nd attempt"
+    pass_threshold: "All recoveries preserve state. Unaffected agents complete. Evidence preserved."
+
+  - id: "L6"
+    name: "End-to-End Qualification"
+    description: "Complete mission pipeline: spec → compile → schedule → dispatch → execute → certify"
+    capabilities_tested:
+      - "Full pipeline integration"
+      - "Cross-component event flow"
+      - "End-to-end evidence chain"
+      - "Mission completion detection"
+      - "Regression resistance"
+    missions:
+      - "HEQB-L6-M1: Real mission simulation — 8-task assessment workflow"
+      - "HEQB-L6-M2: Multi-mission — 2 concurrent missions, 5 tasks each"
+      - "HEQB-L6-M3: Regression — run L1-L6 suite twice, verify identical scores"
+    pass_threshold: "All missions complete. Scores identical across 2 runs. 0 regressions."
+
+# ═══════════════════════════════════════════════════
+# METRIC DEFINITIONS
+# ═══════════════════════════════════════════════════
+
+metrics:
+  - id: "M-CORRECT"
+    name: "Execution Correctness"
+    description: "Fraction of tasks that completed successfully with valid evidence"
+    formula: "correct_completions / total_tasks"
+    target: 1.0
+    regression_threshold: "0.05 (5% drop)"
+    unit: "ratio"
+
+  - id: "M-DEPS"
+    name: "Dependency Correctness"
+    description: "Fraction of dependencies satisfied (no task started before deps met)"
+    formula: "satisfied_dependencies / total_dependencies"
+    target: 1.0
+    regression_threshold: "0.01 (1% drop)"
+    unit: "ratio"
+
+  - id: "M-STATE"
+    name: "State Transition Validity"
+    description: "Fraction of state transitions that followed the legal transition graph"
+    formula: "valid_transitions / total_transitions"
+    target: 1.0
+    regression_threshold: "0.0 (any invalid transition = failure)"
+    unit: "ratio"
+
+  - id: "M-PARALLEL"
+    name: "Parallel Efficiency"
+    description: "Ratio of actual parallel execution to maximum possible parallelism"
+    formula: "actual_parallel_batches / theoretical_max_parallel_batches"
+    target: "≥0.7"
+    regression_threshold: "0.1 (10% drop)"
+    unit: "ratio"
+
+  - id: "M-EVIDENCE"
+    name: "Evidence Completeness"
+    description: "Fraction of completed tasks with verified evidence hashes"
+    formula: "tasks_with_valid_evidence / completed_tasks"
+    target: 1.0
+    regression_threshold: "0.01 (1% drop)"
+    unit: "ratio"
+
+  - id: "M-RECOVER"
+    name: "Recovery Effectiveness"
+    description: "Fraction of failed tasks successfully recovered"
+    formula: "recovered_tasks / failed_tasks"
+    target: "≥0.8"
+    regression_threshold: "0.1 (10% drop)"
+    unit: "ratio"
+
+  - id: "M-CERTIFY"
+    name: "Certification Accuracy"
+    description: "Fraction of missions correctly certified (pass/fail matches ground truth)"
+    formula: "correctly_certified / total_missions"
+    target: 1.0
+    regression_threshold: "0.0 (any mis-certification = failure)"
+    unit: "ratio"
+
+  - id: "M-REGRESSION"
+    name: "Regression Stability"
+    description: "Score delta between consecutive benchmark runs"
+    formula: "|score_run2 - score_run1|"
+    target: 0.0
+    regression_threshold: ">0 (any difference = regression investigation)"
+    unit: "absolute score points"
+
+# ═══════════════════════════════════════════════════
+# SCORING METHODOLOGY
+# ═══════════════════════════════════════════════════
+
+scoring:
+  methodology: "Weighted composite score across all levels"
+  formula: >
+    HEQB Score = Σ(level_weight × level_completion_ratio × level_metric_average)
+    where level_completion = missions_passed / missions_total
+    and metric_average = average of all metrics for that level
+  
+  weights:
+    L1_Compilation: 0.15
+    L2_Scheduling: 0.15
+    L3_Dispatch: 0.20
+    L4_Agent: 0.25
+    L5_Recovery: 0.15
+    L6_EndToEnd: 0.10
+
+  score_range: "0.0 — 1.0"
+  
+  interpretation:
+    - "≥0.95: Production Ready"
+    - "0.85–0.94: Qualified with caveats"
+    - "0.70–0.84: Development quality"
+    - "<0.70: Not qualified"
+
+  version_comparability: >
+    Scores are comparable across runtime versions.
+    Same benchmark version must be used.
+    Benchmark version increments when mission set changes.
+
+  regression_detection: >
+    Any drop >0.01 from previous certified score triggers
+    automated regression flag. Requires investigation before
+    certification.
+
+# ═══════════════════════════════════════════════════
+# CERTIFICATION METHOD
+# ═══════════════════════════════════════════════════
+
+certification:
+  process:
+    - "Run full HEQB suite against runtime version"
+    - "Record all metrics for all levels"
+    - "Compare against previous certified score"
+    - "If regression detected → block certification → investigate"
+    - "If no regression and score ≥0.95 → certify"
+    - "If score <0.95 → return required fixes"
+  
+  evidence_required:
+    - "Full metric log per level"
+    - "Mission-by-mission results"
+    - "Score comparison against previous version"
+    - "Regression analysis (if any)"
+    - "Independent certification report"
+
+  independence_rule: >
+    The entity that implements a runtime change SHALL NOT
+    certify the benchmark result for that change.
+    Independent certification is MANDATORY.
+
+# ═══════════════════════════════════════════════════
+# VERSIONING STRATEGY
+# ═══════════════════════════════════════════════════
+
+versioning:
+  strategy: "Semantic versioning of benchmark"
+  
+  rules:
+    - "MAJOR: Mission set changes (scores not comparable)"
+    - "MINOR: New missions added (existing scores comparable, new optional)"
+    - "PATCH: Metric thresholds adjusted, bug fixes in measurement"
+
+  backward_compatibility: >
+    MINOR and PATCH changes preserve backward comparability.
+    MAJOR changes create new baseline — old scores archived as historical.
+
+  current_baseline: "1.0.0"
+  baseline_date: "2026-07-07"
+  baseline_runtime: "Hermes Runtime v1.0.0 (MC-0001 through MC-0004)"
+
+# ═══════════════════════════════════════════════════
+# EXTENSION STRATEGY
+# ═══════════════════════════════════════════════════
+
+extensions:
+  future_capabilities:
+    - name: "Event Bus"
+      when_validated: "Adds L7: Event Qualification"
+      metrics: ["Event delivery rate", "Subscription correctness"]
+    - name: "Cross-Validation"
+      when_validated: "Adds L8: Validation Qualification"
+      metrics: ["Contradiction detection rate", "Review coverage"]
+    - name: "Distributed Execution"
+      when_validated: "Adds L9: Distribution Qualification"
+      metrics: ["Node utilization", "Network partition recovery"]
+    - name: "ECC Automation"
+      when_validated: "Extends L6 with automated supervision"
+      metrics: ["Alert accuracy", "Response time"]
+
+# ═══════════════════════════════════════════════════
+# VALIDATION — Run against current runtime
+# ═══════════════════════════════════════════════════
+
+validation:
+  target_runtime: "Hermes Runtime v1.0.0"
+  components: ["MC-0001", "MC-0002", "MC-0003", "MC-0004"]
+  
+  expected_baseline_score: "≥0.92"
+  rationale: >
+    MC-0001/0002/0003/0004 are certified. L1-L4 should score near
+    perfect. L5 (Recovery) is design-only — partial score. L6
+    (End-to-End) includes Recovery dependency — partial score.
+  
+  estimated_breakdown:
+    L1: 1.0    # Compiler certified
+    L2: 1.0    # Scheduler certified
+    L3: 1.0    # Dispatcher certified
+    L4: 0.92   # Agent Runtime — browser tool environment-dependent
+    L5: 0.5    # Recovery — designed, not automated
+    L6: 0.75   # End-to-end — partial (Recovery incomplete)

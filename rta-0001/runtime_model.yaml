@@ -1,0 +1,531 @@
+# Hermes Runtime Architecture Meta-Model (RTA-0001)
+# Single source of truth for runtime self-description.
+# Version: 1.0.0
+# Governed by: HEX-0001
+
+meta_model_version: "1.0.0"
+generated: "2026-07-07"
+
+# ═══════════════════════════════════════════════════
+# RUNTIME — Top-level definition
+# ═══════════════════════════════════════════════════
+
+runtime:
+  name: "Hermes Execution Runtime"
+  version: "1.0.0"
+  status: "in_progress"  # in_progress | complete | certified
+  governed_by: "HEX-0001"
+  description: >
+    Transforms mission specifications into completed, certified work
+    through compilation, scheduling, dispatch, and agent execution.
+
+# ═══════════════════════════════════════════════════
+# COMPONENT REGISTRY — every validated runtime capability
+# ═══════════════════════════════════════════════════
+
+components:
+  - id: "MC-0001"
+    name: "Mission Compiler"
+    description: "Transforms mission specifications into validated Mission IR"
+    status: "certified"
+    maturity: "level_4"  # L1=hypothesis, L2=experimental, L3=supported, L4=proven
+    version: "1.0.0"
+    responsibility: "Mission spec → validated intermediate representation"
+    
+    lifecycle:
+      states: ["idle", "compiling", "validated", "error"]
+      initial: "idle"
+      terminal: ["validated", "error"]
+    
+    interfaces:
+      consumes:
+        - name: "MissionSpec"
+          schema: "mission_spec_v1"
+          required: true
+      produces:
+        - name: "MissionIR"
+          schema: "mission_ir_v1"
+          required: true
+      events:
+        publishes: ["mission.compiled", "mission.validation_failed"]
+        subscribes: []
+    
+    dependencies: []
+    
+    quality_gates:
+      - "All required mission fields parsed"
+      - "Dependency graph valid (no cycles)"
+      - "Atomic tasks generated"
+      - "Parallel groups identified"
+      - "Critical path computed"
+      - "Mission IR validates"
+    
+    evidence_required: "level_3"  # Tested
+    certification: "MC-0001_CERTIFICATION.md"
+    
+    traceability:
+      requirements: ["R-01", "R-02", "R-03"]
+      investigations: ["EXE-ARCH-0001", "EXE-ARCH-0002"]
+      evidence: "5/5 real Atlas missions validated. 2 bugs found and fixed."
+    
+    implementation:
+      files: ["mc-0001/src/ir_schema.py", "mc-0001/src/compiler.py"]
+      tests: "mc-0001/tests/test_compiler.py"
+      tests_passing: 20
+    
+    extension_points:
+      - name: "Custom decomposition strategies"
+        interface: "DecompositionStrategy"
+      - name: "Additional constraint types"
+        interface: "ConstraintType"
+    
+    resource_requirements:
+      cpu: "low"
+      memory_mb: 50
+      disk_mb: 10
+
+  - id: "MC-0002"
+    name: "Mission Scheduler"
+    description: "Transforms Mission IR into executable Mission Schedule"
+    status: "certified"
+    maturity: "level_4"
+    version: "1.0.0"
+    responsibility: "Mission IR → execution schedule with queues, batches, waves"
+    
+    lifecycle:
+      states: ["idle", "scheduling", "scheduled", "error"]
+      initial: "idle"
+      terminal: ["scheduled", "error"]
+    
+    interfaces:
+      consumes:
+        - name: "MissionIR"
+          schema: "mission_ir_v1"
+          required: true
+      produces:
+        - name: "MissionSchedule"
+          schema: "mission_schedule_v1"
+          required: true
+      events:
+        publishes: ["mission.scheduled", "schedule.deadlock_detected"]
+        subscribes: []
+    
+    dependencies:
+      - component: "MC-0001"
+        reason: "Requires validated Mission IR"
+        type: "hard"
+    
+    quality_gates:
+      - "Dependency resolution succeeds"
+      - "Ready queue generated"
+      - "Parallel batches generated"
+      - "Critical path preserved"
+      - "No deadlocks"
+      - "Schedule validates"
+    
+    evidence_required: "level_3"
+    certification: "MC-0002_CERTIFICATION.md"
+    
+    traceability:
+      requirements: ["R-04", "R-05", "R-07", "R-09"]
+      investigations: ["EXE-ARCH-0001", "EXE-ARCH-0002"]
+      evidence: "5/5 missions validated. 0 deadlocks. Topological ordering."
+    
+    implementation:
+      files: ["mc-0002/src/schedule_schema.py", "mc-0002/src/scheduler.py"]
+      tests: "5 validation missions"
+    
+    extension_points:
+      - name: "Custom scheduling policies"
+        interface: "SchedulingPolicy"
+      - name: "Resource estimation models"
+        interface: "ResourceModel"
+    
+    resource_requirements:
+      cpu: "low"
+      memory_mb: 50
+      disk_mb: 10
+
+  - id: "MC-0003"
+    name: "Execution Dispatcher"
+    description: "Manages task lifecycle from schedule through state transitions"
+    status: "certified"
+    maturity: "level_4"
+    version: "1.0.0"
+    responsibility: "Mission Schedule → task state machine (9 states)"
+    
+    lifecycle:
+      states: ["created", "scheduled", "dispatching", "executing", "paused", "completed", "failed"]
+      initial: "created"
+      terminal: ["completed", "failed"]
+    
+    interfaces:
+      consumes:
+        - name: "MissionSchedule"
+          schema: "mission_schedule_v1"
+          required: true
+        - name: "AgentCompletion"
+          schema: "agent_result_v1"
+          required: true
+      produces:
+        - name: "DispatchCommand"
+          schema: "dispatch_command_v1"
+          required: true
+      events:
+        publishes: ["task.dispatched", "task.completed", "task.failed", "task.paused", "task.resumed", "dependency.released", "mission.complete"]
+        subscribes: ["agent.completed", "agent.failed"]
+    
+    dependencies:
+      - component: "MC-0002"
+        reason: "Requires validated Mission Schedule"
+        type: "hard"
+    
+    quality_gates:
+      - "Validated execution plans accepted"
+      - "Dependency constraints enforced"
+      - "State transitions deterministic"
+      - "Pause and resume validated"
+      - "Blocked work isolated"
+      - "Evidence preserved"
+    
+    evidence_required: "level_3"
+    certification: "MC-0003_CERTIFICATION.md"
+    
+    traceability:
+      requirements: ["R-05", "R-06", "R-07", "R-09", "R-10"]
+      investigations: ["EXE-ARCH-0001", "EXE-ARCH-0002", "EXE-GAP-0001"]
+      evidence: "5/5 missions validated. 9-state task machine. Pause/resume/fail/recovery all verified."
+    
+    implementation:
+      files: ["mc-0003/src/dispatch.py"]
+    
+    extension_points:
+      - name: "Custom state transitions"
+        interface: "StateTransitionPolicy"
+      - name: "Dispatch strategies"
+        interface: "DispatchStrategy"
+    
+    resource_requirements:
+      cpu: "low"
+      memory_mb: 50
+      disk_mb: 10
+
+  - id: "MC-0004"
+    name: "Agent Runtime"
+    description: "Creates goal-oriented execution agents that bridge DISPATCHED → COMPLETED"
+    status: "designed"
+    maturity: "level_3"  # Supported by architecture, not yet implemented
+    version: "0.0.0"
+    responsibility: "Creates agents with goals + tools → executes tasks → produces evidence → reports completion"
+    
+    lifecycle:
+      states: ["idle", "agent_created", "executing", "completed", "failed"]
+      initial: "idle"
+      terminal: ["completed", "failed"]
+    
+    interfaces:
+      consumes:
+        - name: "DispatchCommand"
+          schema: "dispatch_command_v1"
+          required: true
+      produces:
+        - name: "AgentResult"
+          schema: "agent_result_v1"
+          required: true
+      events:
+        publishes: ["agent.created", "agent.completed", "agent.failed", "evidence.produced"]
+        subscribes: ["task.dispatched"]
+    
+    dependencies:
+      - component: "MC-0003"
+        reason: "Receives dispatch commands from Dispatcher"
+        type: "hard"
+    
+    quality_gates:
+      - "Agents created per dispatched task"
+      - "Tools accessible per agent spec"
+      - "Evidence produced for every execution"
+      - "Results reported to Dispatcher"
+      - "Depth-1 delegation enforced"
+    
+    evidence_required: "level_4"  # Reproducible
+    certification: "PENDING"
+    
+    traceability:
+      requirements: ["R-05", "R-06", "R-11", "R-14", "R-15"]
+      investigations: ["EXE-ARCH-0003", "EXE-ARCH-0004", "EXE-ARCH-0005", "EXE-GAP-0001"]
+      evidence: "Universal gap across 5/5 missions. Agent abstraction survives 3 falsification studies."
+    
+    implementation:
+      files: []
+      tests: ""
+    
+    extension_points:
+      - name: "Tool plugins"
+        interface: "AgentTool"
+      - name: "Execution sandbox"
+        interface: "SandboxProvider"
+    
+    resource_requirements:
+      cpu: "medium"
+      memory_mb: 256
+      disk_mb: 100
+
+  - id: "ECC-0001"
+    name: "Supervision Engine"
+    description: "Continuous monitoring of mission progress, dependency health, and risk"
+    status: "designed"
+    maturity: "level_2"
+    version: "0.0.0"
+    responsibility: "Real-time visibility into all executing missions"
+    
+    interfaces:
+      events:
+        subscribes: ["task.*", "mission.*", "agent.*", "dependency.*"]
+        publishes: ["ecc.alert", "ecc.status_update"]
+    
+    dependencies:
+      - component: "MC-0003"
+        reason: "Monitors dispatched tasks"
+        type: "soft"
+    
+    traceability:
+      requirements: ["R-06", "R-10", "R-14"]
+      investigations: ["EXE-ARCH-0002"]
+      evidence: "ECC dashboards operational in SPRINT-0001, CI-0001, CI-0002"
+
+  - id: "EV-0001"
+    name: "Evidence Pipeline"
+    description: "Immutable evidence chain with hash-linked custody tracking"
+    status: "designed"
+    maturity: "level_3"
+    version: "0.0.0"
+    responsibility: "Every decision and output traceable to verifiable evidence"
+    
+    interfaces:
+      events:
+        subscribes: ["evidence.produced", "task.completed"]
+        publishes: ["evidence.stored", "evidence.verified"]
+    
+    dependencies:
+      - component: "MC-0004"
+        reason: "Receives evidence from Agent Runtime"
+        type: "hard"
+    
+    traceability:
+      requirements: ["R-11", "R-12", "R-13"]
+      investigations: ["EXE-ARCH-0002"]
+      evidence: "SHA-256 chain verification. 10 evidence files archived for GA."
+
+  - id: "REC-0001"
+    name: "Recovery Engine"
+    description: "Formal recovery protocol: classify → isolate → continue → recover → resume"
+    status: "designed"
+    maturity: "level_2"
+    version: "0.0.0"
+    responsibility: "Targeted recovery without stopping unaffected work"
+    
+    interfaces:
+      events:
+        subscribes: ["task.failed", "agent.failed", "ecc.alert"]
+        publishes: ["recovery.started", "recovery.complete", "recovery.failed"]
+    
+    dependencies:
+      - component: "MC-0003"
+        reason: "Coordinates recovery with Dispatcher state machine"
+        type: "hard"
+    
+    traceability:
+      requirements: ["R-07", "R-08", "R-14", "R-15"]
+      investigations: ["EXE-ARCH-0002"]
+      evidence: "Docker recovery (4 min). P0 fix recovery (3 fixes). Compiler bug recovery (2 fixes)."
+
+  - id: "XVAL-0001"
+    name: "Cross-Validation Engine"
+    description: "Every workstream reviews every other. Contradiction detection."
+    status: "designed"
+    maturity: "level_3"
+    version: "0.0.0"
+    responsibility: "Independent verification catching what implementers miss"
+    
+    traceability:
+      requirements: ["R-12", "R-13", "R-14"]
+      evidence: "RC-0001: 3 P0 defects caught that would have shipped. SKDI-0001: 0 contradictions across 6 workstreams."
+
+  - id: "CERT-0001"
+    name: "Certification Framework"
+    description: "Pre-defined gates. Evidence required. Independent certifier."
+    status: "designed"
+    maturity: "level_3"
+    version: "0.0.0"
+    responsibility: "Objective 'done' criteria with evidence-backed verification"
+    
+    traceability:
+      requirements: ["R-12", "R-16"]
+      evidence: "Every mission ends with certification. RC-0001: independent 6-org certification."
+
+# ═══════════════════════════════════════════════════
+# EVENT REGISTRY
+# ═══════════════════════════════════════════════════
+
+events:
+  - name: "mission.compiled"
+    publisher: "MC-0001"
+    payload: ["mission_id", "ir_hash", "task_count"]
+    
+  - name: "mission.scheduled"
+    publisher: "MC-0002"
+    payload: ["mission_id", "schedule_hash", "wave_count", "batch_count"]
+    
+  - name: "task.dispatched"
+    publisher: "MC-0003"
+    subscribers: ["MC-0004"]
+    payload: ["task_id", "batch_id", "wave", "tools_required"]
+    
+  - name: "task.completed"
+    publisher: "MC-0003"
+    subscribers: ["EV-0001", "ECC-0001"]
+    payload: ["task_id", "evidence_hash", "duration_ms"]
+    
+  - name: "task.failed"
+    publisher: "MC-0003"
+    subscribers: ["REC-0001", "ECC-0001"]
+    payload: ["task_id", "error", "evidence_partial"]
+    
+  - name: "task.paused"
+    publisher: "MC-0003"
+    subscribers: ["MC-0004", "ECC-0001"]
+    payload: ["task_id", "reason"]
+    
+  - name: "dependency.released"
+    publisher: "MC-0003"
+    subscribers: ["MC-0004"]
+    payload: ["task_id", "released_by"]
+    
+  - name: "agent.created"
+    publisher: "MC-0004"
+    subscribers: ["ECC-0001"]
+    payload: ["agent_id", "task_id", "tools"]
+    
+  - name: "agent.completed"
+    publisher: "MC-0004"
+    subscribers: ["MC-0003", "EV-0001"]
+    payload: ["agent_id", "task_id", "evidence", "duration_ms"]
+    
+  - name: "agent.failed"
+    publisher: "MC-0004"
+    subscribers: ["MC-0003", "REC-0001"]
+    payload: ["agent_id", "task_id", "error", "evidence_partial"]
+    
+  - name: "evidence.produced"
+    publisher: "MC-0004"
+    subscribers: ["EV-0001"]
+    payload: ["evidence_id", "hash", "type", "task_id"]
+    
+  - name: "ecc.alert"
+    publisher: "ECC-0001"
+    subscribers: ["REC-0001"]
+    payload: ["alert_type", "severity", "component_id", "message"]
+    
+  - name: "recovery.started"
+    publisher: "REC-0001"
+    subscribers: ["ECC-0001"]
+    payload: ["recovery_id", "blocker", "affected_tasks"]
+    
+  - name: "mission.complete"
+    publisher: "MC-0003"
+    subscribers: ["CERT-0001", "ECC-0001"]
+    payload: ["mission_id", "total_tasks", "total_duration_ms"]
+
+# ═══════════════════════════════════════════════════
+# STATE REGISTRY
+# ═══════════════════════════════════════════════════
+
+states:
+  task_lifecycle:
+    owner: "MC-0003"
+    states:
+      - "queued"
+      - "ready"
+      - "blocked"
+      - "dispatched"
+      - "running"
+      - "paused"
+      - "completed"
+      - "failed"
+      - "skipped"
+    transitions:
+      - ["queued", "ready"]
+      - ["ready", "dispatched"]
+      - ["ready", "skipped"]
+      - ["blocked", "ready"]
+      - ["dispatched", "running"]
+      - ["dispatched", "failed"]
+      - ["running", "completed"]
+      - ["running", "failed"]
+      - ["running", "paused"]
+      - ["paused", "running"]
+      - ["paused", "failed"]
+      - ["paused", "skipped"]
+      - ["failed", "queued"]
+      - ["skipped", "queued"]
+    
+  mission_lifecycle:
+    owner: "MC-0003"
+    states:
+      - "created"
+      - "compiled"
+      - "scheduled"
+      - "dispatching"
+      - "executing"
+      - "paused"
+      - "completed"
+      - "failed"
+    transitions:
+      - ["created", "compiled"]
+      - ["compiled", "scheduled"]
+      - ["scheduled", "dispatching"]
+      - ["dispatching", "executing"]
+      - ["executing", "paused"]
+      - ["executing", "completed"]
+      - ["executing", "failed"]
+      - ["paused", "executing"]
+
+# ═══════════════════════════════════════════════════
+# TRACEABILITY — Requirements → Components
+# ═══════════════════════════════════════════════════
+
+traceability:
+  R-01: ["MC-0001"]
+  R-02: ["MC-0001"]
+  R-03: ["MC-0001"]
+  R-04: ["MC-0002"]
+  R-05: ["MC-0002", "MC-0003", "MC-0004"]
+  R-06: ["MC-0003", "MC-0004", "ECC-0001"]
+  R-07: ["MC-0002", "MC-0003", "REC-0001"]
+  R-08: ["REC-0001"]
+  R-09: ["MC-0002", "MC-0003"]
+  R-10: ["MC-0003", "ECC-0001"]
+  R-11: ["MC-0004", "EV-0001"]
+  R-12: ["EV-0001", "XVAL-0001", "CERT-0001"]
+  R-13: ["EV-0001", "XVAL-0001"]
+  R-14: ["MC-0004", "ECC-0001", "REC-0001", "XVAL-0001"]
+  R-15: ["MC-0004", "REC-0001"]
+  R-16: ["CERT-0001"]
+
+# ═══════════════════════════════════════════════════
+# IMPLEMENTATION STATUS
+# ═══════════════════════════════════════════════════
+
+implementation_status:
+  certified:
+    - "MC-0001"  # Mission Compiler
+    - "MC-0002"  # Mission Scheduler
+    - "MC-0003"  # Execution Dispatcher
+  designed:
+    - "MC-0004"  # Agent Runtime
+    - "EV-0001"   # Evidence Pipeline
+    - "ECC-0001"  # Supervision Engine
+    - "REC-0001"  # Recovery Engine
+    - "XVAL-0001" # Cross-Validation Engine
+    - "CERT-0001" # Certification Framework
